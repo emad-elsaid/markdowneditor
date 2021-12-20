@@ -52,7 +52,7 @@ int renderSeparator(string line, int y) {
 }
 
 int main(void) {
-  ifstream input("README.md");
+  ifstream input("TEST.md");
   auto content = vector<string>();
   for (string line; getline(input, line);)
     content.push_back(line);
