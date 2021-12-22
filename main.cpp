@@ -9,15 +9,16 @@ using std::string;
 struct Header {
   string prefix;
   int size;
+  Font font;
 };
 
 Font font;
+
 constexpr auto margin = 10;
 constexpr auto fontsize = 18;
-constexpr auto screenWidth = 800;
-constexpr auto screenHeight = 600;
-constexpr auto fontname = "Roboto/Roboto-Regular.ttf";
-const Header headers[] = {
+constexpr auto screenWidth = 1024;
+constexpr auto screenHeight = 768;
+Header headers[] = {
     {"######", static_cast<int>(fontsize * 1.2)},
     {"#####", static_cast<int>(fontsize * 1.4)},
     {"####", static_cast<int>(fontsize * 1.6)},
@@ -39,7 +40,10 @@ int renderBlockquote(string line, int y) {
 int renderHeader(string line, int y) {
   for (auto &h : headers)
     if (line.starts_with(h.prefix)) {
-      DrawTextEx(font, line.substr(h.prefix.length()).c_str(), {margin, static_cast<float>(y)}, h.size, 0, BLACK);
+      auto firstChar = line.find_first_not_of("# \t");
+      firstChar = firstChar < line.size() ? firstChar : 0;
+      auto str = line.substr(firstChar);
+      DrawTextEx(h.font, str.c_str(), {margin, static_cast<float>(y)}, h.size, 0, BLACK);
       return h.size;
     }
 
@@ -51,6 +55,13 @@ int renderSeparator(string line, int y) {
   return fontsize;
 }
 
+Font setupFont(const char* path, int size) {
+  static const auto filter = TEXTURE_FILTER_ANISOTROPIC_16X;
+  auto f = LoadFontEx(path, size, nullptr, 500);
+  SetTextureFilter(font.texture, filter);
+  return f;
+}
+
 int main(void) {
   ifstream input("TEST.md");
   auto content = vector<string>();
@@ -60,10 +71,11 @@ int main(void) {
 
   InitWindow(screenWidth, screenHeight, "Markdown viewer");
 
-  font = LoadFont(fontname);
-  auto yOffset = 0;
-  SetTextureFilter(font.texture, TEXTURE_FILTER_TRILINEAR);
+  font = setupFont("Inter/Inter-Regular.ttf", fontsize);
+  for(auto& h : headers)
+    h.font = setupFont("Inter/Inter-Bold.ttf", h.size);
 
+  auto yOffset = 0;
   SetTargetFPS(60);
 
   while (!WindowShouldClose()) {
