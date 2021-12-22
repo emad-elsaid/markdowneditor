@@ -1,6 +1,7 @@
 #include "raylib.h"
 #include <fstream>
 #include <vector>
+#include "text.cpp"
 
 using std::ifstream;
 using std::vector;
@@ -51,7 +52,7 @@ int renderHeader(string line, int y) {
 }
 
 int renderSeparator(string line, int y) {
-  DrawLine(margin, y, screenWidth, y, GRAY);
+  DrawLine(margin, y, GetScreenWidth() - margin, y, GRAY);
   return fontsize;
 }
 
@@ -96,7 +97,7 @@ int main(void) {
         } else if (line.starts_with(">") || line.starts_with(">>") || line.starts_with("> > >")) {
           y += renderBlockquote(line, y);
         } else {
-          DrawTextEx(font, line.c_str(), {margin, static_cast<float>(y)}, fontsize, 0, BLACK);
+          y += DrawTextBoxed(font, line.c_str(), {margin, static_cast<float>(y), static_cast<float>(GetScreenWidth()-(margin * 2)), 0}, fontsize, 0, true, BLACK);
           y += fontsize;
         }
       }
