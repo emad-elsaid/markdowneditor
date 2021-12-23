@@ -62,6 +62,13 @@ int renderSeparator(string line, int y) {
   return fontsize;
 }
 
+int renderParagraph(string line, int y) {
+  Rectangle rect = {margin, static_cast<float>(y),
+               static_cast<float>(GetScreenWidth() - (margin * 2)),
+               0};
+  return DrawTextBoxed(font, line.c_str(), rect, fontsize, 0, true, BLACK);
+}
+
 Font setupFont(const char* path, int size) {
   static const auto filter = TEXTURE_FILTER_ANISOTROPIC_16X;
   auto f = LoadFontEx(path, size, nullptr, 500);
@@ -103,7 +110,7 @@ int main(void) {
         } else if (line.starts_with(">") || line.starts_with(">>") || line.starts_with("> > >")) {
           y += renderBlockquote(line, y);
         } else {
-          y += DrawTextBoxed(font, line.c_str(), {margin, static_cast<float>(y), static_cast<float>(GetScreenWidth()-(margin * 2)), 0}, fontsize, 0, true, BLACK);
+          y += renderParagraph(line, y);
         }
       }
     }
