@@ -15,7 +15,9 @@ struct Header {
 
 Font font;
 
-constexpr auto margin = 10;
+constexpr auto margin = 50;
+constexpr auto blockMargin = 10;
+constexpr auto headerMargin = 20;
 constexpr auto fontsize = 18;
 constexpr auto screenWidth = 1024;
 constexpr auto screenHeight = 768;
@@ -29,23 +31,27 @@ Header headers[] = {
 };
 
 int renderBlockquote(string line, int y) {
-  Vector2 rect = {fontsize / 2.0 + margin, static_cast<float>(y + margin)};
-  auto height = fontsize + margin * 2;
+  Vector2 rect = {fontsize / 2.0 + margin, static_cast<float>(y + blockMargin)};
+  auto height = fontsize + blockMargin * 2;
 
+  auto firstChar = line.find_first_not_of("> \t");
+  firstChar = firstChar < line.size() ? firstChar : 0;
+  auto str = line.substr(firstChar);
   DrawRectangle(margin, y, GetScreenWidth() - margin * 2, height , LIGHTGRAY);
-  DrawTextEx(font, line.c_str(), rect, fontsize, 0, DARKGRAY);
+  DrawTextEx(font, str.c_str(), rect, fontsize, 0, DARKGRAY);
 
   return height;
 }
 
 int renderHeader(string line, int y) {
+  y += headerMargin;
   for (auto &h : headers)
     if (line.starts_with(h.prefix)) {
       auto firstChar = line.find_first_not_of("# \t");
       firstChar = firstChar < line.size() ? firstChar : 0;
       auto str = line.substr(firstChar);
       DrawTextEx(h.font, str.c_str(), {margin, static_cast<float>(y)}, h.size, 0, BLACK);
-      return h.size;
+      return h.size + headerMargin;
     }
 
   return 0;
@@ -98,7 +104,6 @@ int main(void) {
           y += renderBlockquote(line, y);
         } else {
           y += DrawTextBoxed(font, line.c_str(), {margin, static_cast<float>(y), static_cast<float>(GetScreenWidth()-(margin * 2)), 0}, fontsize, 0, true, BLACK);
-          y += fontsize;
         }
       }
     }
