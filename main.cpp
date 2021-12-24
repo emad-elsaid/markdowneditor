@@ -15,7 +15,9 @@ struct Header {
 };
 
 Font font;
+Font titleFont;
 
+constexpr auto targetFPS = 60;
 constexpr auto margin = 100;
 constexpr auto blockMargin = 10;
 constexpr auto headerMargin = 20;
@@ -24,14 +26,30 @@ constexpr auto paragraphMargin = 20;
 constexpr auto fontsize = 18;
 constexpr auto screenWidth = 1024;
 constexpr auto screenHeight = 768;
+constexpr auto headerLineColor = LIGHTGRAY;
+constexpr auto titleSize = fontsize * 2.5;
 Header headers[] = {
-  {"###### ", static_cast<int>(fontsize * 1.2), false},
-  {"##### ", static_cast<int>(fontsize * 1.4), false},
-  {"#### ", static_cast<int>(fontsize * 1.6), false},
-  {"### ", static_cast<int>(fontsize * 1.8), false},
-  {"## ", static_cast<int>(fontsize * 2.0), true},
-  {"# ", static_cast<int>(fontsize * 2.2), true},
+  {"######", static_cast<int>(fontsize * 1.2), false},
+  {"#####", static_cast<int>(fontsize * 1.4), false},
+  {"####", static_cast<int>(fontsize * 1.6), false},
+  {"###", static_cast<int>(fontsize * 1.8), false},
+  {"##", static_cast<int>(fontsize * 2.0), true},
+  {"#", static_cast<int>(fontsize * 2.2), true},
 };
+
+int renderTitle(string line, int y) {
+  auto height = headerMargin;
+  auto firstChar = line.find_first_not_of(" \t");
+  firstChar = firstChar < line.size() ? firstChar : 0;
+  auto str = line.substr(firstChar);
+
+  DrawTextEx(titleFont, str.c_str(), {margin, static_cast<float>(y + height)}, titleSize, 0, BLACK);
+  height += titleSize + fontsize;
+  DrawLine(margin, y + height, GetScreenWidth() - margin, y + height, headerLineColor);
+  height += headerMargin;
+
+  return height;
+}
 
 int renderBlockquote(string line, int y) {
   Vector2 rect = {fontsize / 2.0 + margin, static_cast<float>(y + blockMargin)};
@@ -60,7 +78,7 @@ int renderHeader(string line, int y) {
 
       if(h.lineAfter) {
         height += fontsize;
-        DrawLine(margin, y+height, GetScreenWidth() - margin, y+height, GRAY);
+        DrawLine(margin, y+height, GetScreenWidth() - margin, y+height, headerLineColor);
       }
 
       height += headerMargin;
@@ -99,11 +117,12 @@ int main(void) {
   InitWindow(screenWidth, screenHeight, "Markdown viewer");
 
   font = setupFont("Inter/Inter-Regular.ttf", fontsize);
+  titleFont = setupFont("Inter/Inter-Bold.ttf", titleSize);
   for(auto& h : headers)
     h.font = setupFont("Inter/Inter-Bold.ttf", h.size);
 
   auto yOffset = 0;
-  SetTargetFPS(60);
+  SetTargetFPS(targetFPS);
 
   while (!WindowShouldClose()) {
     if(IsKeyPressed(KEY_Q)) break;
@@ -111,25 +130,35 @@ int main(void) {
     if(IsKeyDown(KEY_K)) yOffset -= fontsize;
 
     yOffset += GetMouseWheelMove() * fontsize;
-    if(yOffset<0) yOffset = 0;
+    if(yOffset<0) yOffset = 0; // don't scroll past the beginning
 
     BeginDrawing();
     {
       ClearBackground(RAYWHITE);
       auto y = margin - yOffset;
-      for(auto& line:content) {
+      for(auto iter = content.begin(); iter != content.end(); iter++) {
+        auto line = *iter;
+        auto hasNext = (iter+1) != content.end();
+        auto nextLine = *(iter+1);
         if (line == "---" || line == "___" || line == "***") {
           y += renderSeparator(line, y);
         } else if (line.empty()) {
           // ignore empty lines
         } else if (line.starts_with("#")) {
           y += renderHeader(line, y);
-        } else if (line.starts_with(">") || line.starts_with(">>") || line.starts_with("> > >")) {
+        } else if (line.starts_with(">")) {
           y += renderBlockquote(line, y);
-        } else {
+        } else if (hasNext && nextLine.starts_with("===") && nextLine.find_first_not_of("=") == string::npos) {
+          iter++;
+          y += renderTitle(line, y);
+        } else if (hasNext && !nextLine.empty()) {
           y += renderParagraph(line, y);
         }
       }
+
+      DrawFPS(10,10);
+
+      if (y < GetScreenHeight() - margin) yOffset -= fontsize; // don't scroll past the end
     }
     EndDrawing();
   }
