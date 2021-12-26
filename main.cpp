@@ -17,7 +17,7 @@ struct Header {
 Font font;
 Font titleFont;
 
-constexpr auto targetFPS = 60;
+constexpr auto targetFPS = 120;
 constexpr auto margin = 100;
 constexpr auto blockMargin = 10;
 constexpr auto headerMargin = 20;
@@ -43,12 +43,15 @@ int renderTitle(string line, int y) {
   firstChar = firstChar < line.size() ? firstChar : 0;
   auto str = line.substr(firstChar);
 
-  DrawTextEx(titleFont, str.c_str(), {margin, static_cast<float>(y + height)}, titleSize, 0, BLACK);
-  height += titleSize + fontsize;
-  DrawLine(margin, y + height, GetScreenWidth() - margin, y + height, headerLineColor);
-  height += headerMargin;
-
+  DrawTextEx(titleFont, str.c_str(), {margin, static_cast<float>(y + height)},
+             titleSize, 0, BLACK);
+  height += titleSize;
   return height;
+}
+
+int renderTitleLine(string line, int y) {
+  DrawTextEx(titleFont, line.c_str(), {margin, static_cast<float>(y)}, titleSize, 0, LIGHTGRAY);
+  return titleSize + fontsize + headerMargin;
 }
 
 int renderBlockquote(string line, int y) {
@@ -100,6 +103,16 @@ int renderParagraph(string line, int y) {
   return DrawTextBoxed(font, line.c_str(), rect, fontsize, 0, true, BLACK) + paragraphMargin;
 }
 
+int renderCodeBlock(vector<string>& block, int y) {
+  auto offset = paragraphMargin;
+  for(auto& line:block) {
+    Rectangle rect = {margin, static_cast<float>(y + offset), static_cast<float>(GetScreenWidth() - (margin * 2)), 0};
+    offset += DrawTextBoxed(font, line.c_str(), rect, fontsize, 0, false, ORANGE) + fontsize;
+  }
+
+  return offset;
+}
+
 Font setupFont(const char* path, int size) {
   static const auto filter = TEXTURE_FILTER_ANISOTROPIC_16X;
   auto f = LoadFontEx(path, size, nullptr, 500);
@@ -117,23 +130,37 @@ int main(void) {
   InitWindow(screenWidth, screenHeight, "Markdown viewer");
 
   font = setupFont("Inter/Inter-Regular.ttf", fontsize);
-  titleFont = setupFont("Inter/Inter-Bold.ttf", titleSize);
+  titleFont = setupFont("Inter/Inter-ExtraBold.ttf", titleSize);
   for(auto& h : headers)
     h.font = setupFont("Inter/Inter-Bold.ttf", h.size);
 
   auto yOffset = 0;
   SetTargetFPS(targetFPS);
+  auto needsRender = true;
 
   while (!WindowShouldClose()) {
     if(IsKeyPressed(KEY_Q)) break;
-    if(IsKeyDown(KEY_J)) yOffset += fontsize;
-    if(IsKeyDown(KEY_K)) yOffset -= fontsize;
-
-    yOffset += GetMouseWheelMove() * fontsize;
-    if(yOffset<0) yOffset = 0; // don't scroll past the beginning
+    if(IsKeyDown(KEY_J)) {
+      yOffset += fontsize;
+      needsRender = true;
+    }
+    if(IsKeyDown(KEY_K)) {
+      yOffset -= fontsize;
+      needsRender = true;
+    }
+    if (GetMouseWheelMove()!=0) {
+      yOffset += GetMouseWheelMove() * fontsize;
+      needsRender = true;
+    }
+    if(yOffset<0) {
+      yOffset = 0; // don't scroll past the beginning
+      needsRender = true;
+    }
 
     BeginDrawing();
-    {
+    if (needsRender){
+      needsRender = false;
+
       ClearBackground(RAYWHITE);
       auto y = margin - yOffset;
       for(auto iter = content.begin(); iter != content.end(); iter++) {
@@ -149,9 +176,18 @@ int main(void) {
         } else if (line.starts_with(">")) {
           y += renderBlockquote(line, y);
         } else if (hasNext && nextLine.starts_with("===") && nextLine.find_first_not_of("=") == string::npos) {
-          iter++;
           y += renderTitle(line, y);
-        } else if (hasNext && !nextLine.empty()) {
+          y += renderTitleLine(nextLine, y);
+          iter++;
+        } else if (line.starts_with("```")) {
+          auto block = vector<string>();
+          block.push_back(line);
+          while(++iter != content.end()) {
+            block.push_back(*iter);
+            if (*iter == "```") break;
+          }
+          y += renderCodeBlock(block, y);
+        } else {
           y += renderParagraph(line, y);
         }
       }
