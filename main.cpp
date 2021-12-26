@@ -22,7 +22,6 @@ constexpr auto margin = 100;
 constexpr auto blockMargin = 10;
 constexpr auto headerMargin = 20;
 constexpr auto separatorMargin = 20;
-constexpr auto paragraphMargin = 20;
 constexpr auto fontsize = 18;
 constexpr auto screenWidth = 1024;
 constexpr auto screenHeight = 768;
@@ -97,14 +96,14 @@ int renderSeparator(string line, int y) {
 }
 
 int renderParagraph(string line, int y) {
-  Rectangle rect = {margin, static_cast<float>(y+paragraphMargin),
+  Rectangle rect = {margin, static_cast<float>(y),
                static_cast<float>(GetScreenWidth() - (margin * 2)),
                0};
-  return DrawTextBoxed(font, line.c_str(), rect, fontsize, 0, true, BLACK) + paragraphMargin;
+  return DrawTextBoxed(font, line.c_str(), rect, fontsize, 0, true, BLACK);
 }
 
 int renderCodeBlock(vector<string>& block, int y) {
-  auto offset = paragraphMargin;
+  auto offset = 0;
   for(auto& line:block) {
     Rectangle rect = {margin, static_cast<float>(y + offset), static_cast<float>(GetScreenWidth() - (margin * 2)), 0};
     offset += DrawTextBoxed(font, line.c_str(), rect, fontsize, 0, false, ORANGE) + fontsize;
@@ -169,8 +168,6 @@ int main(void) {
         auto nextLine = *(iter+1);
         if (line == "---" || line == "___" || line == "***") {
           y += renderSeparator(line, y);
-        } else if (line.empty()) {
-          // ignore empty lines
         } else if (line.starts_with("#")) {
           y += renderHeader(line, y);
         } else if (line.starts_with(">")) {
@@ -190,6 +187,8 @@ int main(void) {
         } else {
           y += renderParagraph(line, y);
         }
+
+        if (y > GetScreenHeight()) break; // don't continue of drawing went out of the screen
       }
 
       DrawFPS(10,10);
